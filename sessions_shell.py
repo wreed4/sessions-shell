@@ -164,33 +164,17 @@ class SessionsShell(Cmd):
     ############################
     
 
-    def complete_attach(self, text, line, begidx, endidx):
+    def completedefault(self, text, line, begidx, endidx):
         """TODO: Docstring for test.
 
         :arg1: TODO
         :returns: TODO
 
         """
-        return [s for s in self._sessions if s.startswith(text)]
+        arg = line.partition(' ')[2]  # get the part of the line after the first space
+        offset = len(arg) - len(text)
+        return [s[offset:] for s in self._sessions if s.startswith(arg)]
 
-
-    def complete_kill(self, text, line, begidx, endidx):
-        """TODO: Docstring for test.
-
-        :arg1: TODO
-        :returns: TODO
-
-        """
-        return [s for s in self._sessions if s.startswith(text)]
-
-    def complete_rename(self, text, line, begidx, endidx):
-        """TODO: Docstring for test.
-
-        :arg1: TODO
-        :returns: TODO
-
-        """
-        return [s for s in self._sessions if s.startswith(text)]
 
 
     ############################
