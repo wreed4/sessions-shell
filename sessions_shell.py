@@ -245,7 +245,7 @@ class SessionsShell(Cmd):
         # build up command
         if not host:
             host = random.choice(self.hosts)
-        ssh_cmd = ['ssh', '-t', host]
+        ssh_cmd = ['ssh', '-Xt', host]
 
         # build remote command, escaping it appropriately. 
         rem_cmd = '/bin/sh -lc "{}"'.format(cmd.replace('"', r'\"'))
