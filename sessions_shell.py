@@ -102,7 +102,7 @@ class SessionsShell(Cmd):
             return
         cmd = 'tmux.py attach "{}"'.format(name)
 
-        host, ret = self._exec_cmd(cmd, self._sessions[name])
+        ret = self._exec_cmd(cmd, self._sessions[name])
         if ret is 200:  # tmux exited 
             del self._sessions[name]
 
@@ -125,7 +125,7 @@ class SessionsShell(Cmd):
             return
         cmd = 'tmux.py kill "{}"'.format(name)
 
-        host, ret = self._exec_cmd(cmd, self._sessions[name])
+        ret = self._exec_cmd(cmd, self._sessions[name])
         if ret is 0 or ret is 1:  # tmux returned normally or session wasn't found
             del self._sessions[name]
 
@@ -151,12 +151,26 @@ class SessionsShell(Cmd):
 
         cmd = 'tmux.py rename "{}" --new_name "{}"'.format(name, new_name)
 
-        host, ret = self._exec_cmd(cmd, self._sessions[name])
+        ret = self._exec_cmd(cmd, self._sessions[name])
 
         if ret is 0:  # returned normally
             self._sessions[new_name] = self._sessions.pop(name)
 
     
+    # [ ]TODO(wreed): Implement update
+    def do_update(self, hostname):
+        """Update list of sessions.
+
+        update all  --> update sessions on all hosts
+        update HOST --> update sessions on given host
+
+        :type hostname: str
+
+        """
+        if hostname.strip() == "all":
+            for host in hostList:
+                cmd = "tmux.py ls"
+
         
 
     ############################
@@ -226,7 +240,7 @@ class SessionsShell(Cmd):
 
         #return index
     
-    def _exec_cmd(self, cmd, host=None):
+    def _exec_cmd(self, cmd, host_arg=None, output=False):
         '''
         returns a tuple containing:
             the hostname it connected to,
@@ -243,8 +257,23 @@ class SessionsShell(Cmd):
             return None, 1
 
         # build up command
+        host = host_arg
         if not host:
             host = random.choice(self.hosts)
+        ssh_cmd = _build_ssh_cmd(cmd, host)
+
+        # execute command
+        if output:
+            return subprocess.check_output(ssh_cmd)
+        else:
+            ret = subprocess.call(ssh_cmd)
+            if host:
+                return ret
+            else:
+                return host, ret # tmux.py returns 0 if 'detached' is found, and >0 otherwise
+
+
+    def _build_ssh_cmd(self, cmd, host):
         ssh_cmd = ['ssh', '-Xt', host]
 
         # build remote command, escaping it appropriately. 
@@ -252,9 +281,6 @@ class SessionsShell(Cmd):
 
         ssh_cmd.append(rem_cmd)
 
-        # execute command
-        ret = subprocess.call(ssh_cmd)
-        return host, ret # tmux.py returns 0 if 'detached' is found, and >0 otherwise
 
     def _quit(self):
         print("Goodbye!\n")

@@ -78,8 +78,18 @@ class Tmux:
 
         return self._exec_tmux_cmd(cmd)
 
+
+    def ls(self):
+        '''
+        List all running tmux sessions
+        '''
+        cmd = ['tmux', 'ls']
+
+        return self._exec_tmux_cmd(cmd, output=True)
+
+
         
-    def _exec_tmux_cmd(self, cmd):
+    def _exec_tmux_cmd(self, cmd, output=False):
         """executes tmux cmd and returns a code dependent on the result
 
         :type cmd: str
@@ -92,10 +102,13 @@ class Tmux:
             elif tmux_output.find(b'exited') >= 0:
                 return 200
             else: 
-                return 0
+                if output:
+                    return (0, tmux_output)
+                else:
+                    return 0
         except subprocess.CalledProcessError as e:
             print(e.output.decode(), end='')
-            return e.returncode
+            return tmux_output if output else e.returncode
 
 
 
