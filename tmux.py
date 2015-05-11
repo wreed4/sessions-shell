@@ -4,15 +4,16 @@
 import subprocess
 import argparse
 import sys
-import re
 
+TMUX_DETACHED = 100
+TMUX_EXITED   = 200
 
 class Tmux:
     """Wrapper class around tmux that returns more helpful codes.
     
     Returns:
-        100 if tmux detached.
-        200 if tmux exited
+        TMUX_DETACHED if tmux detached.
+        TMUX_EXITED if tmux exited
         tmux return code otherwise
     """
 
@@ -104,18 +105,20 @@ class Tmux:
         try:
             tmux_output = subprocess.check_output(cmd)
             if tmux_output.find(b'detached') >= 0:
-                return 100
+                return TMUX_DETACHED
             elif tmux_output.find(b'exited') >= 0:
-                return 200
+                return TMUX_EXITED
             else: 
                 if output:
                     return (0, tmux_output.decode())
                 else:
+                    print(output)
                     return 0
         except subprocess.CalledProcessError as e:
             if output:
                 return (e.returncode, tmux_output.decode())
             else:
+                print(output)
                 return e.returncode
 
 

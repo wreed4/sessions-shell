@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import os
 import random
+import tmux
 
 ssh = True
 hostList = []
@@ -83,7 +84,7 @@ class SessionsShell(Cmd):
         cmd = 'tmux.py new "{}"'.format(name)
 
         host, ret = self._exec_cmd(cmd)
-        if ret is 100: # tmux detached 
+        if ret is tmux.TMUX_DETACHED: # tmux detached 
             self._sessions[name] = host
         
 
@@ -103,7 +104,7 @@ class SessionsShell(Cmd):
         cmd = 'tmux.py attach "{}"'.format(name)
 
         ret = self._exec_cmd(cmd, self._sessions[name])
-        if ret is 200:  # tmux exited 
+        if ret is tmux.TMUX_EXITED:  # tmux exited 
             del self._sessions[name]
 
 
@@ -172,7 +173,7 @@ class SessionsShell(Cmd):
         hostname = hostname.strip()
 
         # get list of hosts for which we want to refresh
-        requested_hosts = (host for host in hostList if hostname == 'all' or hostname == host)
+        requested_hosts = (host for host in self.hosts if hostname == 'all' or hostname == host)
 
         for host in requested_hosts:
             output = self._exec_cmd(cmd, host, output=True)
@@ -258,8 +259,8 @@ class SessionsShell(Cmd):
         returns a tuple containing:
             the hostname it connected to,
             and:
-                100 if tmux.py session detached,
-                200 if tmux.py session exited
+                tmux.TMUX_DETACHED if tmux.py session detached,
+                tmux.TMUX_EXITED if tmux.py session exited
                 0 if tmux.py exited otherwise successfully
                 otherwise whatever return code to signify an error tmux wants
 
@@ -272,7 +273,7 @@ class SessionsShell(Cmd):
         # build up command
         host = host_arg
         if not host:
-            host = random.choice(self.hostList)
+            host = random.choice(self.hosts)
         ssh_cmd = _build_ssh_cmd(cmd, host)
 
         # execute command
