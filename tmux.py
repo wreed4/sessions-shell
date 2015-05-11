@@ -4,14 +4,15 @@
 import subprocess
 import argparse
 import sys
+import re
 
 
 class Tmux:
     """Wrapper class around tmux that returns more helpful codes.
     
     Returns:
-        0 if tmux detached.
-        2 if tmux exited
+        100 if tmux detached.
+        200 if tmux exited
         tmux return code otherwise
     """
 
@@ -85,7 +86,10 @@ class Tmux:
         '''
         cmd = ['tmux', 'ls']
 
-        return self._exec_tmux_cmd(cmd, output=True)
+        output = self._exec_tmux_cmd(cmd, output=True)
+        # check for 'failed' in output
+        if output.find('failed'):
+            pass
 
 
         
@@ -93,22 +97,24 @@ class Tmux:
         """executes tmux cmd and returns a code dependent on the result
 
         :type cmd: str
+        :return: (retcode, output) IF output ELSE retcode
         """
         try:
             tmux_output = subprocess.check_output(cmd)
-            print(tmux_output.decode())
             if tmux_output.find(b'detached') >= 0:
                 return 100
             elif tmux_output.find(b'exited') >= 0:
                 return 200
             else: 
                 if output:
-                    return (0, tmux_output)
+                    return (0, tmux_output.decode())
                 else:
                     return 0
         except subprocess.CalledProcessError as e:
-            print(e.output.decode(), end='')
-            return tmux_output if output else e.returncode
+            if output:
+                return (e.returncode, tmux_output.decode())
+            else:
+                return e.returncode
 
 
 

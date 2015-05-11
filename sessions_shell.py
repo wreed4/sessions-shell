@@ -158,7 +158,7 @@ class SessionsShell(Cmd):
 
     
     # [ ]TODO(wreed): Implement update
-    def do_update(self, hostname):
+    def do_refresh(self, hostname='all'):
         """Update list of sessions.
 
         update all  --> update sessions on all hosts
@@ -167,9 +167,20 @@ class SessionsShell(Cmd):
         :type hostname: str
 
         """
-        if hostname.strip() == "all":
-            for host in hostList:
-                cmd = "tmux.py ls"
+
+        cmd = "tmux.py ls"
+        hostname = hostname.strip()
+
+        # get list of hosts for which we want to refresh
+        requested_hosts = (host for host in hostList if hostname == 'all' or hostname == host)
+
+        for host in requested_hosts:
+            output = self._exec_cmd(cmd, host, output=True)
+            session_names = (re.sub(r':.*$', '', line) for line in output.split('\n'))
+            for name in session_names:
+                print("Found session {} on host {}".format(name, host))
+                self._sessions[name] = host
+
 
         
 
@@ -259,7 +270,7 @@ class SessionsShell(Cmd):
         # build up command
         host = host_arg
         if not host:
-            host = random.choice(self.hosts)
+            host = random.choice(self.hostList)
         ssh_cmd = _build_ssh_cmd(cmd, host)
 
         # execute command
@@ -267,7 +278,7 @@ class SessionsShell(Cmd):
             return subprocess.check_output(ssh_cmd)
         else:
             ret = subprocess.call(ssh_cmd)
-            if host:
+            if host_arg:
                 return ret
             else:
                 return host, ret # tmux.py returns 0 if 'detached' is found, and >0 otherwise
