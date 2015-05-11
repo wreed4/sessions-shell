@@ -161,8 +161,8 @@ class SessionsShell(Cmd):
     def do_refresh(self, hostname='all'):
         """Update list of sessions.
 
-        update all  --> update sessions on all hosts
-        update HOST --> update sessions on given host
+        refresh all  --> update sessions on all hosts
+        refresh HOST --> update sessions on given host
 
         :type hostname: str
 
@@ -180,6 +180,8 @@ class SessionsShell(Cmd):
             for name in session_names:
                 print("Found session {} on host {}".format(name, host))
                 self._sessions[name] = host
+            else:
+                print("No sessions found on host {}".format(host))
 
 
         

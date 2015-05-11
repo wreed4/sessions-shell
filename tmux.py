@@ -86,10 +86,12 @@ class Tmux:
         '''
         cmd = ['tmux', 'ls']
 
-        output = self._exec_tmux_cmd(cmd, output=True)
+        ret, output = self._exec_tmux_cmd(cmd, output=True)
         # check for 'failed' in output
         if output.find('failed'):
-            pass
+            print("No sessions found")
+        else:
+            print(output)
 
 
         
