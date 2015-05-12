@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import os
 import random
+import re
 import tmux
 
 ssh = True
@@ -176,13 +177,20 @@ class SessionsShell(Cmd):
         requested_hosts = (host for host in self.hosts if hostname == 'all' or hostname == host)
 
         for host in requested_hosts:
+            #clear out existing sessions
+            for s, h in list(self._sessions.items()):
+                if h == host:
+                    del self._sessions[s]
+
             output = self._exec_cmd(cmd, host, output=True)
             session_names = (re.sub(r':.*$', '', line) for line in output.split('\n'))
             for name in session_names:
                 print("Found session {} on host {}".format(name, host))
                 self._sessions[name] = host
             else:
-                print("No sessions found on host {}".format(host))
+                continue
+
+            print("No sessions found on host {}".format(host))
 
 
         
@@ -274,11 +282,11 @@ class SessionsShell(Cmd):
         host = host_arg
         if not host:
             host = random.choice(self.hosts)
-        ssh_cmd = _build_ssh_cmd(cmd, host)
+        ssh_cmd = self._build_ssh_cmd(cmd, host)
 
         # execute command
         if output:
-            return subprocess.check_output(ssh_cmd)
+            return subprocess.check_output(ssh_cmd).decode().strip()
         else:
             ret = subprocess.call(ssh_cmd)
             if host_arg:
@@ -291,9 +299,10 @@ class SessionsShell(Cmd):
         ssh_cmd = ['ssh', '-Xt', host]
 
         # build remote command, escaping it appropriately. 
-        rem_cmd = '/bin/sh -lc "{}"'.format(cmd.replace('"', r'\"'))
+        rem_cmd = '/bin/sh -c "{}"'.format(cmd.replace('"', r'\"'))
 
         ssh_cmd.append(rem_cmd)
+        return ssh_cmd
 
 
     def _quit(self):

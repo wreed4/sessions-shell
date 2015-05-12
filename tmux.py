@@ -89,7 +89,7 @@ class Tmux:
 
         ret, output = self._exec_tmux_cmd(cmd, output=True)
         # check for 'failed' in output
-        if output.find('failed'):
+        if output.find('failed') >= 0:
             print("No sessions found")
         else:
             print(output)
@@ -125,22 +125,38 @@ class Tmux:
 
 def main():
     # parse args
-    parser = argparse.ArgumentParser(description="A wrapper around Tmux providing some basic functionality"
+    parser = argparse.ArgumentParser(description="A wrapper around Tmux providing some basic functionality "
             "and more useful return codes")
-    parser.add_argument('action', choices=('new', 'attach', 'rename', 'kill'),
-            help='The action to make tmux perform')
-    parser.add_argument('name', help='The name of the target session')
-    parser.add_argument('--new_name', help='specify new name for session.  Ignored unless ACTION is "rename"')
+    subcommands = parser.add_subparsers(dest='action')
+
+    # parse 'ls'
+    ls_cmd = subcommands.add_parser('ls', help='Print all tmux sessions available')
+
+    # parse 'new', 'attach', 'kill'
+    new_cmd    = subcommands.add_parser('new', help='Create a new tmux session')
+    attach_cmd = subcommands.add_parser('attach', help='Attach to a currently existing tmux session')
+    kill_cmd   = subcommands.add_parser('kill', help='Kill a currently running tmux session')
+    for cmd in (new_cmd, attach_cmd, kill_cmd):
+        cmd.add_argument('target', help='The name of the target session')
+
+    # parse 'rename'
+    rename_cmd = subcommands.add_parser('rename', help='Rename an existing tmux session')
+    rename_cmd.add_argument('target', help='The name of the target session')
+    rename_cmd.add_argument('new_name', help='The new name for the session')
+
+
 
     args = parser.parse_args()
 
     # execute tmux stuff
     tmux = Tmux()
     if args.action == 'rename':
-        retval = tmux.rename(args.name, args.new_name)
+        retval = tmux.rename(args.target, args.new_name)
+    elif args.action == 'ls':
+        retval = tmux.ls()
     else:
         method = getattr(tmux, args.action)
-        retval = method(args.name)
+        retval = method(args.target)
         
     #print('tmux.py retuned: {}'.format(retval))
     sys.exit(retval)
