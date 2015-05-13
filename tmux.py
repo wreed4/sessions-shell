@@ -94,6 +94,8 @@ class Tmux:
         else:
             print(output)
 
+        return ret
+
 
         
     def _exec_tmux_cmd(self, cmd, output=False):
@@ -103,7 +105,7 @@ class Tmux:
         :return: (retcode, output) IF output ELSE retcode
         """
         try:
-            tmux_output = subprocess.check_output(cmd)
+            tmux_output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             if tmux_output.find(b'detached') >= 0:
                 return TMUX_DETACHED
             elif tmux_output.find(b'exited') >= 0:
@@ -112,13 +114,13 @@ class Tmux:
                 if output:
                     return (0, tmux_output.decode())
                 else:
-                    print(output)
+                    print(tmux_output.decode())
                     return 0
         except subprocess.CalledProcessError as e:
             if output:
-                return (e.returncode, tmux_output.decode())
+                return (e.returncode, e.output.decode())
             else:
-                print(output)
+                print(e.output)
                 return e.returncode
 
 

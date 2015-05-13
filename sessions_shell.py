@@ -44,6 +44,10 @@ class SessionsShell(Cmd):
         print("RETVAL=={}".format(ret))
 
 
+    def do_shell(self, args):
+        subprocess.call(args, shell=True)
+
+
     def do_ls(self, args):
         """ls 
         
@@ -59,7 +63,7 @@ class SessionsShell(Cmd):
                 width = max([len(session_name) for session_name in self._sessions])
                 print("{}: {:{w}}  |  {}".format(i, s, self._sessions[s], w=width))
             else:
-                print(i,': ',  s)
+                print("{}: {}".format(i, s))
 
         print()
 
@@ -68,7 +72,7 @@ class SessionsShell(Cmd):
 
         Same as 'ls -a'
         """
-        self.do_ls('-a')
+        self.onecmd('ls -a')
 
     def do_new(self, name):
         """new NAME
@@ -84,7 +88,7 @@ class SessionsShell(Cmd):
             return
         cmd = 'tmux.py new "{}"'.format(name)
 
-        host, ret = self._exec_cmd(cmd)
+        ret, host = self._exec_cmd(cmd)
         if ret is tmux.TMUX_DETACHED: # tmux detached 
             self._sessions[name] = host
         
@@ -105,7 +109,7 @@ class SessionsShell(Cmd):
         cmd = 'tmux.py attach "{}"'.format(name)
 
         ret = self._exec_cmd(cmd, self._sessions[name])
-        if ret is tmux.TMUX_EXITED:  # tmux exited 
+        if ret[0] is tmux.TMUX_EXITED:  # tmux exited 
             del self._sessions[name]
 
 
@@ -118,7 +122,7 @@ class SessionsShell(Cmd):
 
         if name == '*':
             for s in self._sessions[:]:
-                self.do_kill(s)
+                self.onecmd('kill ' + s)
 
             return
         
@@ -128,7 +132,7 @@ class SessionsShell(Cmd):
         cmd = 'tmux.py kill "{}"'.format(name)
 
         ret = self._exec_cmd(cmd, self._sessions[name])
-        if ret is 0 or ret is 1:  # tmux returned normally or session wasn't found
+        if ret[0] is 0 or ret is 1:  # tmux returned normally or session wasn't found
             del self._sessions[name]
 
 
@@ -151,19 +155,19 @@ class SessionsShell(Cmd):
 
         new_name = input('New name: ')
 
-        cmd = 'tmux.py rename "{}" --new_name "{}"'.format(name, new_name)
+        cmd = 'tmux.py rename "{}" "{}"'.format(name, new_name)
 
         ret = self._exec_cmd(cmd, self._sessions[name])
 
-        if ret is 0:  # returned normally
+        if ret[0] is 0:  # returned normally
             self._sessions[new_name] = self._sessions.pop(name)
 
     
     # [ ]TODO(wreed): Implement update
-    def do_refresh(self, hostname='all'):
+    def do_refresh(self, hostname):
         """Update list of sessions.
 
-        refresh all  --> update sessions on all hosts
+        refresh --> update sessions on all hosts
         refresh HOST --> update sessions on given host
 
         :type hostname: str
@@ -171,7 +175,10 @@ class SessionsShell(Cmd):
         """
 
         cmd = "tmux.py ls"
-        hostname = hostname.strip()
+        if not hostname:
+            hostname = 'all'
+        else:
+            hostname = hostname.strip()
 
         # get list of hosts for which we want to refresh
         requested_hosts = (host for host in self.hosts if hostname == 'all' or hostname == host)
@@ -182,15 +189,15 @@ class SessionsShell(Cmd):
                 if h == host:
                     del self._sessions[s]
 
-            output = self._exec_cmd(cmd, host, output=True)
+            ret, output = self._exec_cmd(cmd, host, output=True)
+            if ret > 0:
+                print("No sessions found on host {}".format(host))
+                continue
+
             session_names = (re.sub(r':.*$', '', line) for line in output.split('\n'))
             for name in session_names:
                 print("Found session {} on host {}".format(name, host))
                 self._sessions[name] = host
-            else:
-                continue
-
-            print("No sessions found on host {}".format(host))
 
 
         
@@ -210,6 +217,10 @@ class SessionsShell(Cmd):
         arg = line.partition(' ')[2]  # get the part of the line after the first space
         offset = len(arg) - len(text)
         return [s[offset:] for s in self._sessions if s.startswith(arg)]
+
+
+    def complete_refresh(self, text, line, begidx, endidx):
+        return self.hosts
 
 
 
@@ -276,7 +287,7 @@ class SessionsShell(Cmd):
         illegals_found = [char for char in [';', '|', '*'] if char in cmd]
         if illegals_found:
             print('Illegal character found: [{}]'.format(', '.join(illegals_found)))
-            return None, 1
+            return 1, None
 
         # build up command
         host = host_arg
@@ -286,13 +297,22 @@ class SessionsShell(Cmd):
 
         # execute command
         if output:
-            return subprocess.check_output(ssh_cmd).decode().strip()
+            try:
+                cmd_output = subprocess.check_output(ssh_cmd).decode().strip()
+                code = 0
+            except subprocess.CalledProcessError as e:
+                cmd_output = e.output.decode().strip()
+                code = e.returncode
         else:
-            ret = subprocess.call(ssh_cmd)
-            if host_arg:
-                return ret
-            else:
-                return host, ret # tmux.py returns 0 if 'detached' is found, and >0 otherwise
+            code = subprocess.call(ssh_cmd)
+
+        ret = [code]
+        if not host_arg:
+            ret.append(host)
+        if output:
+            ret.append(cmd_output)
+
+        return tuple(ret)
 
 
     def _build_ssh_cmd(self, cmd, host):
