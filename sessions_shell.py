@@ -7,9 +7,10 @@ import pickle
 import subprocess
 import os
 import random
+from collections import OrderedDict
 
 ssh = True
-hostList = []
+hostList = ['localhost']  # change for your needs 
 session_file = os.path.expanduser('~/.sessions')
 
 
@@ -25,7 +26,7 @@ class SessionsShell(Cmd):
             with open(session_file, 'br') as saved_file:
                 self._sessions = pickle.load(saved_file)
         except FileNotFoundError:
-            self._sessions = {}
+            self._sessions = OrderedDict()
 
 
     #########################
@@ -85,6 +86,7 @@ class SessionsShell(Cmd):
         host, ret = self._exec_cmd(cmd)
         if ret is 100: # tmux detached 
             self._sessions[name] = host
+            self._sessions.move_to_end(name, last=False)
         
 
     def do_attach(self, name):
@@ -105,6 +107,8 @@ class SessionsShell(Cmd):
         host, ret = self._exec_cmd(cmd, self._sessions[name])
         if ret is 200:  # tmux exited 
             del self._sessions[name]
+        else:
+            self._sessions.move_to_end(name, last=False)
 
 
     def do_kill(self, name):
@@ -155,6 +159,7 @@ class SessionsShell(Cmd):
 
         if ret is 0:  # returned normally
             self._sessions[new_name] = self._sessions.pop(name)
+            self._sessions.move_to_end(new_name, last=False)
 
     
         
