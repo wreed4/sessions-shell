@@ -9,9 +9,10 @@ import os
 import random
 import re
 import tmux
+from collections import OrderedDict
 
 ssh = True
-hostList = []
+hostList = ['localhost']  # change for your needs 
 session_file = os.path.expanduser('~/.sessions')
 
 
@@ -27,7 +28,7 @@ class SessionsShell(Cmd):
             with open(session_file, 'br') as saved_file:
                 self._sessions = pickle.load(saved_file)
         except FileNotFoundError:
-            self._sessions = {}
+            self._sessions = OrderedDict()
 
 
     #########################
@@ -42,6 +43,9 @@ class SessionsShell(Cmd):
         print(cmd)
         ret = subprocess.call(cmd)
         print("RETVAL=={}".format(ret))
+
+    def do_shell(self, args):
+        subprocess.call(args, shell=True)
 
 
     def do_shell(self, args):
@@ -91,6 +95,7 @@ class SessionsShell(Cmd):
         ret, host = self._exec_cmd(cmd)
         if ret is tmux.TMUX_DETACHED: # tmux detached 
             self._sessions[name] = host
+            self._sessions.move_to_end(name, last=False)
         
 
     def do_attach(self, name):
@@ -111,6 +116,8 @@ class SessionsShell(Cmd):
         ret = self._exec_cmd(cmd, self._sessions[name])
         if ret[0] is tmux.TMUX_EXITED:  # tmux exited 
             del self._sessions[name]
+        else:
+            self._sessions.move_to_end(name, last=False)
 
 
     def do_kill(self, name):
@@ -161,6 +168,7 @@ class SessionsShell(Cmd):
 
         if ret[0] is 0:  # returned normally
             self._sessions[new_name] = self._sessions.pop(name)
+            self._sessions.move_to_end(new_name, last=False)
 
     
     # [ ]TODO(wreed): Implement update
