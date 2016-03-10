@@ -48,10 +48,6 @@ class SessionsShell(Cmd):
         subprocess.call(args, shell=True)
 
 
-    def do_shell(self, args):
-        subprocess.call(args, shell=True)
-
-
     def do_ls(self, args):
         """ls 
         
