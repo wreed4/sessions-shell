@@ -42,6 +42,9 @@ class SessionsShell(Cmd):
         ret = subprocess.call(cmd)
         print("RETVAL=={}".format(ret))
 
+    def do_shell(self, args):
+        subprocess.call(args, shell=True)
+
 
     def do_ls(self, args):
         """ls 
